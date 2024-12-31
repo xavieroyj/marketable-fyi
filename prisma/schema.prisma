@@ -1,0 +1,138 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Domain {
+  id              String  @id @default(cuid())
+  domainName      String  @unique // No one can have the same domain name
+  isVerified      Boolean @default(false)
+  verificationKey String? // Used to verify the domain
+  isSystemDomain  Boolean @default(false) // Everyone can use this domain without verification
+
+  verifiedAt DateTime?
+
+  // Relations
+  links Link[]
+
+  // This would allow us to track which domain a user has created
+  // For system domains, this would be null
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Created and updated at
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("domain")
+}
+
+model Link {
+  id   String @id @default(cuid())
+  slug String @unique
+
+  domainId String
+  domain   Domain? @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  originalUrl String
+
+  // Expiration
+  expiresAt DateTime?
+
+  // Created and updated at
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // User ID
+  userId String
+  user   User?  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Relations
+  analytics Analytics[]
+
+  // Ensure that the slug is unique within the domain
+  @@unique([slug, domainId])
+  @@map("link")
+}
+
+model Analytics {
+  id String @id @default(cuid())
+
+  ipAddress String?
+  userAgent String?
+  referrer  String?
+  clickedAt DateTime @default(now())
+
+  linkId String
+  link   Link   @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@map("analytics")
+}
+
+model User {
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean
+  image         String?
+  createdAt     DateTime
+  updatedAt     DateTime
+  sessions      Session[]
+  accounts      Account[]
+
+  domains Domain[]
+  Link    Link[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
+}
