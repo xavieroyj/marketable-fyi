@@ -8,6 +8,10 @@ interface Params {
 
 export async function GET(request: Request, { params }: { params: Params }) {
     try {
+        console.log('Inside [domain]/[slug]/route.ts')
+        console.log('Request:', request);
+        console.log('Params:', params);
+
         const { domain, slug } = params;
 
         // If no slug is provided, return 404
